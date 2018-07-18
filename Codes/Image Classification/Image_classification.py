@@ -15,7 +15,7 @@ test_dir='/home/amanthakur/Downloads/test'
 img_size=50
 lr=0.001
 
-model_name="dogsvscats-()-()-model".format(lr,"6conv-basic")
+model_name="dogs_and_cats_clasifier-()-()-model".format(lr,"6conv-basic")
 def label_image(img):
     word_label=img.split('.')
     word_label=word_label[0][:3]
@@ -58,7 +58,11 @@ def process_test_data():
     np.save("test_data.npy",(testing_data,y_test))
     return testing_data,y_test
 
-
+def conv_pool_layers(conv,neurons,kernel):
+    conv=conv_2d(conv,neurons,kernel, activation='relu')
+    conv=max_pool_2d(conv,kernel)
+    return conv
+    
 def train_model(train_data):
     train=train_data[:-500]
     test=train_data[-500:]
@@ -72,29 +76,23 @@ def train_model(train_data):
 
     convnet = input_data(shape=[None, img_size,img_size, 1], name='input')
     
-    convnet = conv_2d(convnet, 32, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv1=conv_pool_layers(convnet,32,2)
     
-    convnet = conv_2d(convnet, 64, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv2=conv_pool_layers(conv1,64,2)
     
-    convnet = conv_2d(convnet, 32, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv3=conv_pool_layers(conv2,32,2)
     
-    convnet = conv_2d(convnet, 64, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv4=conv_pool_layers(conv3,64,2)
     
-    convnet = conv_2d(convnet, 32, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv5=conv_pool_layers(conv4,32,2)
     
-    convnet = conv_2d(convnet, 64, 3, activation='relu')
-    convnet = max_pool_2d(convnet, 3)
+    conv6=conv_pool_layers(conv5,64,2)
     
-    convnet = fully_connected(convnet, 1024, activation='relu')
-    convnet = dropout(convnet, 0.8)
+    conv7 = fully_connected(conv6, 1024, activation='relu')
+    conv7 = dropout(conv7, 0.8)
     
-    convnet = fully_connected(convnet, 2, activation='softmax')
-    convnet = regression(convnet, optimizer='adam', learning_rate=lr, loss='categorical_crossentropy', name='targets')
+    conv8 = fully_connected(conv7, 2, activation='softmax')
+    convnet = regression(conv8, optimizer='adam', learning_rate=lr, loss='categorical_crossentropy', name='targets')
     
     model = tflearn.DNN(convnet,tensorboard_dir='log')
     model.fit({'input': x}, {'targets': y}, n_epoch=5, validation_set=({'input': test_x}, {'targets': test_y}), 
@@ -131,10 +129,10 @@ def test_model(model,test_data):
         y.axes.get_xaxis().set_visible(False)
         y.axes.get_yaxis().set_visible(False)
     plt.show()
-    with open("submission.file.csv","w") as f:
+    with open("result.file.csv","w") as f:
         f.write("id,label\n")
 
-    with open("submission.file.csv","a") as f:
+    with open("result.file.csv","a") as f:
         for data in test_data:
            img_num=data[1]
            img_data=data[0]
@@ -150,11 +148,14 @@ def confusion_metrics(y_test,y_pred):
 def accuracy(y_test,y_pred):
     return accuracy_score(y_test, y_pred, normalize=True, sample_weight=None)
 
-#train_data=create_train_data()
-#if you already have train data
-train_data=np.load("training_data.npy")
-#test_data,y_test=process_test_data()
-test_data,y_test=np.load("test_data.npy")
+train_data=create_train_data()
+
+#train_data=np.load("training_data.npy")
+
+test_data,y_test=process_test_data()
+
+#test_data,y_test=np.load("test_data.npy")
+
 y_test=y_test[:16]
 model=train_model(train_data)
 
